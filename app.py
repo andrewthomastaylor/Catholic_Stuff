@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 from black_scholes_strategy.model import BlackScholesModel
 from black_scholes_strategy.strategy import MispricingStrategy
 
@@ -53,7 +54,9 @@ with col1:
 with col2:
     st.subheader("Trading Signal (Call)")
     st.metric("Signal", call_signal)
-    st.write(f"Difference: {((call_price - market_price) / call_price * 100):.2f}%" if call_price > 0 else "N/A")
+    if call_price > 0:
+        diff_pct = (call_price - market_price) / call_price * 100
+        st.write(f"Difference: {diff_pct:.2f}%")
 
 st.markdown("---")
 st.subheader("Greeks")
@@ -66,3 +69,32 @@ greeks_data = {
 st.table(pd.DataFrame(greeks_data))
 
 st.info("Note: Vega is per 1% change in volatility. Theta is per day. Rho is per 1% change in interest rate.")
+
+st.markdown("---")
+st.subheader("Visualizations")
+
+# Generate data for charts
+s_range = np.linspace(S * 0.5, S * 1.5, 50)
+viz_data = []
+
+for s_val in s_range:
+    temp_model = BlackScholesModel(s_val, K, T, r, sigma)
+    viz_data.append({
+        "Stock Price": s_val,
+        "Call Price": temp_model.calc_price('call'),
+        "Put Price": temp_model.calc_price('put'),
+        "Call Delta": temp_model.calc_delta('call'),
+        "Put Delta": temp_model.calc_delta('put')
+    })
+
+df_viz = pd.DataFrame(viz_data)
+
+viz_col1, viz_col2 = st.columns(2)
+
+with viz_col1:
+    st.write("Option Price vs Stock Price")
+    st.line_chart(df_viz.set_index("Stock Price")[["Call Price", "Put Price"]])
+
+with viz_col2:
+    st.write("Delta vs Stock Price")
+    st.line_chart(df_viz.set_index("Stock Price")[["Call Delta", "Put Delta"]])
